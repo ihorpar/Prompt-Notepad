@@ -196,7 +196,7 @@ export function Toolbar({
             {downloadOpen && (
               <div className="absolute right-0 mt-2 w-32 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
                 <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Format</div>
-                {['md', 'json', 'xml', 'txt', 'doc'].map(ext => (
+                {['md', 'json', 'xml', 'txt', 'doc', 'pdf'].map(ext => (
                   <button
                     key={ext}
                     onClick={() => { onDownload(ext); setDownloadOpen(false); }}

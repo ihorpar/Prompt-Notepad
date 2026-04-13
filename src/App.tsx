@@ -118,9 +118,90 @@ export default function App() {
     let finalContent = content;
     let mimeType = 'text/plain';
 
-    if (ext === 'doc') {
+    if (ext === 'doc' || ext === 'pdf') {
       const htmlContent = await marked.parse(content);
-      finalContent = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export</title></head><body>${htmlContent}</body></html>`;
+      
+      // Process headers to ensure first letter is capitalized, but preserve ALL CAPS
+      const processedHtml = htmlContent.replace(/<(h[1-6])>(.*?)<\/\1>/g, (match, tag, text) => {
+        // If it's already all caps (and has at least one letter), leave it
+        if (text === text.toUpperCase() && /[A-Z]/.test(text)) {
+          return `<${tag}>${text}</${tag}>`;
+        }
+        // Otherwise, ensure first letter is capitalized
+        const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
+        return `<${tag}>${capitalized}</${tag}>`;
+      });
+
+      const exportHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset='utf-8'>
+          <title>Prompt Export</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+            body { 
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.6;
+              color: #1a202c;
+              padding: 40px;
+              max-width: 800px;
+              margin: auto;
+            }
+            h1, h2, h3 { color: #2d3748; font-family: 'Inter', sans-serif; margin-top: 1.5em; margin-bottom: 0.5em; }
+            h1 { font-size: 24pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+            h2 { font-size: 18pt; }
+            h3 { font-size: 14pt; }
+            p { margin-bottom: 1em; }
+            ul, ol { margin-bottom: 1em; padding-left: 2em; }
+            li { margin-bottom: 0.5em; }
+            code { 
+              font-family: 'JetBrains Mono', monospace; 
+              background: #f7fafc; 
+              padding: 2px 4px; 
+              border-radius: 4px; 
+              font-size: 0.9em;
+              color: #805ad5;
+            }
+            pre { 
+              background: #1a202c; 
+              color: #edf2f7; 
+              padding: 16px; 
+              border-radius: 8px; 
+              overflow-x: auto;
+              font-family: 'JetBrains Mono', monospace;
+              margin: 1.5em 0;
+              white-space: pre-wrap;
+            }
+          </style>
+        </head>
+        <body>
+          ${processedHtml}
+        </body>
+        </html>`;
+
+      if (ext === 'pdf') {
+        const html2pdf = (await import('html2pdf.js')).default;
+        const element = document.createElement('div');
+        element.innerHTML = exportHtml;
+        document.body.appendChild(element);
+        
+        const opt = {
+          margin: 10,
+          filename: 'prompt.pdf',
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        try {
+          await html2pdf().set(opt).from(element).save();
+        } finally {
+          document.body.removeChild(element);
+        }
+        return;
+      }
+
+      finalContent = exportHtml;
       mimeType = 'application/msword';
     } else if (ext === 'json') {
       mimeType = 'application/json';

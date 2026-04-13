@@ -27,6 +27,7 @@
     "fast-xml-parser": "^5.5.11",
     "framer-motion": "^12.38.0",
     "gpt-tokenizer": "^3.4.0",
+    "html2pdf.js": "^0.14.0",
     "idb": "^8.0.3",
     "lucide-react": "^0.546.0",
     "marked": "^18.0.0",
