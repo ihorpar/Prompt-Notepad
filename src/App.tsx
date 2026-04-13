@@ -12,6 +12,10 @@ import { saveVersion, getVersions, clearVersions, updateVersionName, PromptVersi
 import { convertFormat } from './lib/converter';
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  
   const [content, setContent] = useState<string>('');
   const [format, setFormat] = useState<'auto' | 'markdown' | 'json' | 'xml'>('auto');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -22,7 +26,41 @@ export default function App() {
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const editorRef = useRef<any>(null);
 
+  useEffect(() => {
+    fetch('/api/auth/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data.requiresAuth && !data.authenticated) {
+          setIsAuthenticated(false);
+        } else {
+          setIsAuthenticated(true);
+        }
+      })
+      .catch(() => setIsAuthenticated(true)); // Fallback if server is not running auth
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsAuthenticated(true);
+      } else {
+        setAuthError('Invalid password');
+      }
+    } catch (err) {
+      setAuthError('Authentication failed');
+    }
+  };
+
   const actualFormat = useMemo(() => {
+
     if (format !== 'auto') return format;
     const trimmed = content.trim();
     if (!trimmed) return 'markdown';
@@ -133,68 +171,148 @@ export default function App() {
       });
 
       const exportHtml = `
-        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <html>
         <head>
           <meta charset='utf-8'>
-          <title>Prompt Export</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono&family=Libre+Baskerville:ital@0;1&display=swap');
+            
             body { 
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              line-height: 1.6;
+              font-family: 'Inter', -apple-system, sans-serif;
+              line-height: 1.7;
               color: #1a202c;
-              padding: 40px;
-              max-width: 800px;
-              margin: auto;
+              padding: 0;
+              margin: 0;
+              background: white;
             }
-            h1, h2, h3 { color: #2d3748; font-family: 'Inter', sans-serif; margin-top: 1.5em; margin-bottom: 0.5em; }
-            h1 { font-size: 24pt; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-            h2 { font-size: 18pt; }
-            h3 { font-size: 14pt; }
-            p { margin-bottom: 1em; }
-            ul, ol { margin-bottom: 1em; padding-left: 2em; }
-            li { margin-bottom: 0.5em; }
+            
+            .content-wrapper {
+              padding: 50px 60px;
+            }
+
+            h1, h2, h3, h4 { 
+              font-family: 'Inter', sans-serif; 
+              color: #111827;
+              margin-top: 2em;
+              margin-bottom: 0.8em;
+              page-break-after: avoid;
+              letter-spacing: -0.02em;
+            }
+
+            h1 { 
+              font-size: 28pt; 
+              font-weight: 700;
+              border-bottom: 3px solid #3b82f6; 
+              padding-bottom: 12px;
+              margin-top: 0;
+            }
+
+            h2 { 
+              font-size: 20pt; 
+              font-weight: 600;
+              border-bottom: 1px solid #e5e7eb;
+              padding-bottom: 8px;
+            }
+
+            h3 { 
+              font-size: 16pt; 
+              font-weight: 600;
+              color: #374151;
+            }
+
+            p, li { 
+              font-size: 11.5pt;
+              margin-bottom: 1.2em;
+              page-break-inside: avoid;
+            }
+
+            ul, ol { 
+              margin-bottom: 1.5em; 
+              padding-left: 1.5em; 
+            }
+
+            li { 
+              margin-bottom: 0.6em; 
+            }
+
             code { 
               font-family: 'JetBrains Mono', monospace; 
-              background: #f7fafc; 
-              padding: 2px 4px; 
+              background: #f3f4f6; 
+              padding: 2px 5px; 
               border-radius: 4px; 
-              font-size: 0.9em;
-              color: #805ad5;
+              font-size: 0.95em;
+              color: #2563eb;
+              font-weight: 500;
             }
+
             pre { 
-              background: #1a202c; 
-              color: #edf2f7; 
-              padding: 16px; 
-              border-radius: 8px; 
-              overflow-x: auto;
+              background: #0f172a; 
+              color: #f8fafc; 
+              padding: 20px; 
+              border-radius: 12px; 
               font-family: 'JetBrains Mono', monospace;
-              margin: 1.5em 0;
+              margin: 2em 0;
               white-space: pre-wrap;
+              font-size: 10pt;
+              line-height: 1.5;
+              page-break-inside: avoid;
+              border: 1px solid #1e293b;
+            }
+
+            blockquote {
+              margin: 2em 0;
+              padding: 10px 20px;
+              border-left: 4px solid #3b82f6;
+              background: #eff6ff;
+              color: #1e40af;
+              font-style: italic;
+              page-break-inside: avoid;
+            }
+
+            .variable {
+              color: #b45309;
+              font-weight: 600;
+              background: #fffbeb;
+              padding: 1px 3px;
+              border-radius: 3px;
             }
           </style>
         </head>
         <body>
-          ${processedHtml}
+          <div class="content-wrapper">
+            ${processedHtml.replace(/\{\{(.*?)\}\}/g, '<span class="variable">{{$1}}</span>')}
+          </div>
         </body>
         </html>`;
 
       if (ext === 'pdf') {
-        const html2pdf = (await import('html2pdf.js')).default;
+        const html2pdf = (window as any).html2pdf;
+        if (!html2pdf) {
+          alert('PDF library is still loading. Please try again in a second.');
+          return;
+        }
         const element = document.createElement('div');
         element.innerHTML = exportHtml;
         document.body.appendChild(element);
         
         const opt = {
-          margin: 10,
+          margin: [15, 15],
           filename: 'prompt.pdf',
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          image: { type: 'jpeg', quality: 1 },
+          html2canvas: { 
+            scale: 2, 
+            useCORS: true,
+            letterRendering: true,
+            logging: false
+          },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
         
         try {
           await html2pdf().set(opt).from(element).save();
+        } catch (err) {
+          console.error('PDF Export Error:', err);
         } finally {
           document.body.removeChild(element);
         }
@@ -242,37 +360,37 @@ export default function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Save: Ctrl+S
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
         e.preventDefault();
         setIsSaveModalOpen(true);
       }
       // Cleanup: Alt+C
-      if (e.altKey && e.key.toLowerCase() === 'c') {
+      if (e.altKey && e.code === 'KeyC') {
         e.preventDefault();
         handleCleanup();
       }
       // Review: Alt+R
-      if (e.altKey && e.key.toLowerCase() === 'r') {
+      if (e.altKey && e.code === 'KeyR') {
         e.preventDefault();
         setIsReviewModalOpen(true);
       }
       // Toggle View Mode: Alt+T
-      if (e.altKey && e.key.toLowerCase() === 't') {
+      if (e.altKey && e.code === 'KeyT') {
         e.preventDefault();
         handleToggleView();
       }
       // Toggle Outline: Alt+O
-      if (e.altKey && e.key.toLowerCase() === 'o') {
+      if (e.altKey && e.code === 'KeyO') {
         e.preventDefault();
         handleToggleOutline();
       }
       // Toggle History: Alt+H
-      if (e.altKey && e.key.toLowerCase() === 'h') {
+      if (e.altKey && e.code === 'KeyH') {
         e.preventDefault();
         handleToggleHistory();
       }
       // Toggle Theme: Ctrl+Shift+L
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyL') {
         e.preventDefault();
         handleToggleTheme();
       }
@@ -313,6 +431,40 @@ export default function App() {
     }
     return null;
   }, [content, actualFormat, viewMode]);
+
+  if (isAuthenticated === null) {
+    return <div className="flex h-screen items-center justify-center bg-[#0f111a]"><div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div></div>;
+  }
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-[#0f111a] font-sans">
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-800">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Prompt Workstation</h1>
+          <p className="text-gray-500 dark:text-gray-400 mb-6 text-sm">Please enter the password to access the app.</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter password"
+                className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                autoFocus
+              />
+            </div>
+            {authError && <p className="text-red-500 text-sm">{authError}</p>}
+            <button
+              type="submit"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition-colors"
+            >
+              Unlock App
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-full bg-white dark:bg-[#0f111a] text-gray-900 dark:text-gray-100 overflow-hidden font-sans">

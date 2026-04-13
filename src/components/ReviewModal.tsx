@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
 import { marked } from 'marked';
-import { GoogleGenAI } from '@google/genai';
 
 marked.use({
   renderer: {
@@ -36,33 +35,22 @@ export function ReviewModal({ isOpen, onClose, content }: ReviewModalProps) {
     setLoading(true);
     setError('');
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `You are an expert Prompt Engineer. Review the following prompt for clarity, structural integrity, and potential for high-quality LLM output.
-
-Analyze the prompt based on these criteria:
-1. **Clarity & Specificity**: Are the instructions unambiguous?
-2. **Structure**: Is the use of formats (Markdown, XML, JSON) consistent and helpful?
-3. **Context**: Does the prompt provide enough context for the task?
-4. **Constraints**: Are the limitations and requirements clearly defined?
-5. **Potential Issues**: Identify any internal contradictions, biases, or areas prone to hallucination.
-
-Provide a detailed review with:
-- **Strengths**: What works well.
-- **Areas for Improvement**: Specific suggestions for refinement.
-- **Optimized Snippets**: Provide improved versions of specific sections in code blocks.
-
-Prompt to review:
----
-${content}
----`
+      const res = await fetch('/api/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
       });
       
-      const html = await marked.parse(response.text || '');
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to generate review');
+      }
+      
+      const html = await marked.parse(data.text || '');
       setReviewHtml(html);
     } catch (err: any) {
-      setError(err.message || 'Failed to generate review. Please check your API key.');
+      setError(err.message || 'Failed to generate review. Please check your connection.');
     } finally {
       setLoading(false);
     }

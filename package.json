@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev": "tsx server.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "start": "node server.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
@@ -20,6 +21,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "@xyflow/react": "^12.10.2",
     "clsx": "^2.1.1",
+    "cookie-parser": "^1.4.7",
     "dagre": "^0.8.5",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
@@ -27,7 +29,6 @@
     "fast-xml-parser": "^5.5.11",
     "framer-motion": "^12.38.0",
     "gpt-tokenizer": "^3.4.0",
-    "html2pdf.js": "^0.14.0",
     "idb": "^8.0.3",
     "lucide-react": "^0.546.0",
     "marked": "^18.0.0",
@@ -38,6 +39,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",

@@ -24,6 +24,12 @@ export function CodeEditor({
   const decorationsCollection = useRef<any>(null);
   const internalEditorRef = useRef<any>(null);
 
+  // Keep track of the latest callbacks to prevent stale closures in Monaco commands
+  const callbacksRef = useRef({ onSave, onCleanup, onReview, onToggleView, onToggleOutline, onToggleHistory, onToggleTheme });
+  useEffect(() => {
+    callbacksRef.current = { onSave, onCleanup, onReview, onToggleView, onToggleOutline, onToggleHistory, onToggleTheme };
+  }, [onSave, onCleanup, onReview, onToggleView, onToggleOutline, onToggleHistory, onToggleTheme]);
+
   const handleBeforeMount = (monacoInstance: any) => {
     monacoInstance.editor.defineTheme('custom-dark', {
       base: 'vs-dark',
@@ -86,7 +92,7 @@ export function CodeEditor({
         onChange={(val) => onChange(val || '')}
         theme={theme === 'dark' ? 'custom-dark' : 'custom-light'}
         beforeMount={handleBeforeMount}
-        onMount={(editor) => {
+        onMount={(editor, monacoInstance) => {
           internalEditorRef.current = editor;
           if (editorRef) {
             editorRef.current = editor;
@@ -94,9 +100,9 @@ export function CodeEditor({
           updateDecorations();
 
           // Add Commands
-          if (monaco) {
+          if (monacoInstance) {
             // Bold: Ctrl+B
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyB, () => {
+            editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyB, () => {
               const selection = editor.getSelection();
               const text = editor.getModel().getValueInRange(selection);
               editor.executeEdits('my-source', [{
@@ -111,7 +117,7 @@ export function CodeEditor({
             });
 
             // Italic: Ctrl+I
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyI, () => {
+            editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyI, () => {
               const selection = editor.getSelection();
               const text = editor.getModel().getValueInRange(selection);
               editor.executeEdits('my-source', [{
@@ -126,7 +132,7 @@ export function CodeEditor({
             });
 
             // Insert Variable: Ctrl+Shift+V
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, () => {
+            editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyV, () => {
               const selection = editor.getSelection();
               editor.executeEdits('my-source', [{
                 range: selection,
@@ -138,8 +144,7 @@ export function CodeEditor({
             });
 
             // Close XML Tag: Alt+Enter
-            editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, () => {
-              if (language !== 'xml') return;
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.Enter, () => {
               const position = editor.getPosition();
               const model = editor.getModel();
               const textBefore = model.getValueInRange({
@@ -170,7 +175,7 @@ export function CodeEditor({
               if (stack.length > 0) {
                 const lastTag = stack.pop();
                 editor.executeEdits('my-source', [{
-                  range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+                  range: new monacoInstance.Range(position.lineNumber, position.column, position.lineNumber, position.column),
                   text: `</${lastTag}>`,
                   forceMoveMarkers: true
                 }]);
@@ -178,13 +183,13 @@ export function CodeEditor({
             });
 
             // Global Hotkeys as Editor Commands
-            if (onSave) editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, onSave);
-            if (onCleanup) editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyC, onCleanup);
-            if (onReview) editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyR, onReview);
-            if (onToggleView) editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyT, onToggleView);
-            if (onToggleOutline) editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyO, onToggleOutline);
-            if (onToggleHistory) editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyH, onToggleHistory);
-            if (onToggleTheme) editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyL, onToggleTheme);
+            editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS, () => callbacksRef.current.onSave?.());
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyC, () => callbacksRef.current.onCleanup?.());
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyR, () => callbacksRef.current.onReview?.());
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyT, () => callbacksRef.current.onToggleView?.());
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyO, () => callbacksRef.current.onToggleOutline?.());
+            editor.addCommand(monacoInstance.KeyMod.Alt | monacoInstance.KeyCode.KeyH, () => callbacksRef.current.onToggleHistory?.());
+            editor.addCommand(monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyL, () => callbacksRef.current.onToggleTheme?.());
           }
         }}
         options={{
